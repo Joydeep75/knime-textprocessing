@@ -49,10 +49,10 @@
 package org.knime.ext.textprocessing.nodes.preprocessing.dictreplacer;
 
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -62,8 +62,10 @@ import org.knime.core.node.NodeLogger;
 import org.knime.core.node.NodeSettingsRO;
 import org.knime.core.node.NodeSettingsWO;
 import org.knime.core.node.defaultnodesettings.SettingsModelString;
+import org.knime.core.util.FileUtil;
 import org.knime.ext.textprocessing.nodes.preprocessing.StreamableFunctionPreprocessingNodeModel;
 import org.knime.ext.textprocessing.nodes.preprocessing.TermPreprocessing;
+import org.knime.ext.textprocessing.nodes.source.parser.FileCollector2;
 import org.knime.ext.textprocessing.nodes.tokenization.MissingTokenizerException;
 import org.knime.ext.textprocessing.nodes.tokenization.TokenizerFactoryRegistry;
 import org.knime.ext.textprocessing.util.DataTableSpecVerifier;
@@ -96,10 +98,9 @@ public final class DictionaryReplacerNodeModel2 extends StreamableFunctionPrepro
     @Override
     protected TermPreprocessing createPreprocessing() throws Exception {
         Map<String, String> dictionary = new HashMap<String, String>();
-        File f = new File(m_fileModel.getStringValue());
-        if (f.exists() && f.canRead() && f.isFile()) {
+        URL url = FileCollector2.getURL(m_fileModel.getStringValue(), false);
             try {
-                BufferedReader reader = new BufferedReader(new FileReader(f));
+                BufferedReader reader = new BufferedReader(new InputStreamReader(FileUtil.openStreamWithTimeout(url)));
                 String line;
                 while ((line = reader.readLine()) != null) {
                     String[] keyVal = line.trim().split(DEFAULT_SEPARATOR);
@@ -113,7 +114,6 @@ public final class DictionaryReplacerNodeModel2 extends StreamableFunctionPrepro
             } catch (IOException e) {
                 LOGGER.warn("Cant read from file");
             }
-        }
         return new DictionaryReplacer(dictionary, m_tokenizerModel.getStringValue());
     }
 
@@ -130,6 +130,8 @@ public final class DictionaryReplacerNodeModel2 extends StreamableFunctionPrepro
         if (!dataTableSpecVerifier.verifyTokenizer(m_tokenizerModel.getStringValue())) {
             setWarningMessage(dataTableSpecVerifier.getTokenizerWarningMsg());
         }
+        // check file path
+        FileCollector2.getURL(m_fileModel.getStringValue(), false);
     }
 
     /**
